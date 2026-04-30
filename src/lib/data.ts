@@ -4,7 +4,7 @@ import { QUEUE_PAGE_SIZE, queueOffset, queueStatusOrder, queueStatusRank, type Q
 import { buildSampleDashboard, sampleEvents, sampleProfile, sampleSalesforceOrders, sampleSentences } from "@/lib/sample-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isOverdue, statusLabels } from "@/lib/normalization";
-import type { AssignableProfile, DashboardMetrics, DashboardProduction, DashboardStatus, EventResponsibleOption, ManagedUser, Profile, ProductionKind, QueueStatusMode, SalesforceOrderGroup, SalesforceOrderQueueSummary, SalesforceOrderRecord, SalesforceOrdersSummary, SentenceEvent, SentenceRecord, SentenceStatus, WorkflowStage } from "@/lib/types";
+import type { AssignableProfile, DashboardMetrics, DashboardProduction, DashboardStatus, EventResponsibleOption, ManagedUser, Profile, ProductionKind, QueueStatusMode, SalesforceOrderGroup, SalesforceOrderQueueSummary, SalesforceOrderRecord, SalesforceOrdersSummary, SentenceEvent, SentenceProcessDuplicate, SentenceRecord, SentenceStatus, WorkflowStage } from "@/lib/types";
 
 const sentenceListSelect = `
   id,
@@ -55,6 +55,25 @@ const sentenceDetailSelect = `
   qualidade_data,
   data_ultimo_evento,
   import_warnings
+`;
+
+const sentenceProcessDuplicateSelect = `
+  id,
+  legacy_id_sentenca,
+  processo,
+  autor,
+  cpf_cnpj,
+  uc,
+  municipio_raw,
+  tipo_decisao_normalized,
+  observacao,
+  responsavel_cumprimento,
+  responsavel_qualidade,
+  cumprimento_status,
+  qualidade_status,
+  cumprimento_data,
+  qualidade_data,
+  data_ultimo_evento
 `;
 
 const dashboardSelect = `
@@ -323,6 +342,18 @@ export async function getSentence(id: string): Promise<SentenceRecord | null> {
   return data as SentenceRecord | null;
 }
 
+export async function getSentenceProcessDuplicates(sentenceId: string): Promise<SentenceProcessDuplicate[]> {
+  const context = await getAppRequestContext();
+  if (!context.supabase) return getLocalSentenceProcessDuplicates(sentenceId);
+
+  const { data, error } = await context.supabase.rpc("sentence_process_duplicates", { sentence_id_arg: sentenceId });
+
+  if (!error) return normalizeSentenceProcessDuplicates((data ?? []) as SentenceProcessDuplicate[]);
+  if (!isMissingRpcError(error)) throwSupabaseError("getSentenceProcessDuplicates", error);
+
+  return getFallbackSentenceProcessDuplicates(context, sentenceId);
+}
+
 export async function getSentenceEvents(sentenceId: string): Promise<SentenceEvent[]> {
   const context = await getAppRequestContext();
   if (!context.supabase) return sampleEvents.filter((event) => event.sentence_id === sentenceId);
@@ -375,6 +406,98 @@ export async function getSalesforceOrderQueueSummaries(processos: string[]): Pro
 
   if (error) throwSupabaseError("getSalesforceOrderQueueSummaries", error);
   return summarizeSalesforceOrderQueueRows((data ?? []) as SalesforceOrderQueueRow[]);
+}
+
+function getLocalSentenceProcessDuplicates(sentenceId: string): SentenceProcessDuplicate[] {
+  const current = sampleSentences.find((sentence) => sentence.id === sentenceId);
+  if (!current) return [];
+
+  const rows = sampleSentences.filter((sentence) => sentence.processo === current.processo);
+  const orderSummary = summarizeSalesforceOrderQueueRows(
+    sampleSalesforceOrders.filter((order) => order.is_latest && order.processo === current.processo),
+  )[current.processo];
+
+  return normalizeSentenceProcessDuplicates(
+    rows.map((sentence) => ({
+      ...sentence,
+      is_current: sentence.id === sentenceId,
+      event_count: sampleEvents.filter((event) => event.sentence_id === sentence.id).length,
+      order_total: orderSummary?.totalOrders ?? 0,
+      order_open: orderSummary?.openOrders ?? 0,
+      order_closed: orderSummary?.closedOrders ?? 0,
+      order_unknown: orderSummary?.unknownOrders ?? 0,
+    })),
+  );
+}
+
+async function getFallbackSentenceProcessDuplicates(
+  context: AppRequestContext,
+  sentenceId: string,
+): Promise<SentenceProcessDuplicate[]> {
+  const { data: current, error: currentError } = await context.supabase!
+    .from("sentences")
+    .select("id,processo")
+    .eq("id", sentenceId)
+    .maybeSingle();
+
+  if (currentError) throwSupabaseError("getSentenceProcessDuplicates.current", currentError);
+  if (!current?.processo) return [];
+
+  const client = createSupabaseAdminClient() ?? context.supabase!;
+  const { data: sentences, error: sentenceError } = await client
+    .from("sentences")
+    .select(sentenceProcessDuplicateSelect)
+    .eq("processo", current.processo)
+    .order("data_ultimo_evento", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: true });
+
+  if (sentenceError) throwSupabaseError("getSentenceProcessDuplicates.sentences", sentenceError);
+
+  const rows = (sentences ?? []) as SentenceRecord[];
+  const sentenceIds = rows.map((sentence) => sentence.id);
+  const eventCounts = new Map<string, number>();
+  if (sentenceIds.length > 0) {
+    const { data: events, error: eventError } = await client
+      .from("sentence_events")
+      .select("sentence_id")
+      .in("sentence_id", sentenceIds);
+
+    if (eventError) throwSupabaseError("getSentenceProcessDuplicates.events", eventError);
+    for (const event of (events ?? []) as Array<{ sentence_id: string }>) {
+      eventCounts.set(event.sentence_id, (eventCounts.get(event.sentence_id) ?? 0) + 1);
+    }
+  }
+
+  const orderSummary = (await getSalesforceOrderQueueSummaries([current.processo]))[current.processo];
+
+  return normalizeSentenceProcessDuplicates(
+    rows.map((sentence) => ({
+      ...sentence,
+      is_current: sentence.id === sentenceId,
+      event_count: eventCounts.get(sentence.id) ?? 0,
+      order_total: orderSummary?.totalOrders ?? 0,
+      order_open: orderSummary?.openOrders ?? 0,
+      order_closed: orderSummary?.closedOrders ?? 0,
+      order_unknown: orderSummary?.unknownOrders ?? 0,
+    })),
+  );
+}
+
+function normalizeSentenceProcessDuplicates(rows: SentenceProcessDuplicate[]): SentenceProcessDuplicate[] {
+  return rows.map((row) => ({
+    ...row,
+    event_count: toNumber(row.event_count),
+    order_total: toNumber(row.order_total),
+    order_open: toNumber(row.order_open),
+    order_closed: toNumber(row.order_closed),
+    order_unknown: toNumber(row.order_unknown),
+  }));
+}
+
+function isMissingRpcError(error: { code?: string; message?: string }) {
+  return error.code === "PGRST202"
+    || error.code === "42883"
+    || /could not find the function/i.test(error.message ?? "");
 }
 
 export async function getDashboardMetrics(from?: string, to?: string): Promise<DashboardMetrics> {

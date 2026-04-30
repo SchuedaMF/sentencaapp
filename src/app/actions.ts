@@ -492,6 +492,7 @@ async function applyBulkResponsibleAssignment(
   const updatePayload = {
     [columns.responsible]: responsible,
     [columns.status]: nextStatus,
+    [columns.baseStatus]: nextStatus,
   };
 
   if (payload.mode === "selected") {
@@ -582,8 +583,16 @@ function eligibleStatusesForFilter(statusMode: QueueStatusMode) {
 
 function stageAssignmentColumns(stage: WorkflowStage) {
   return stage === "CUMPRIMENTO"
-    ? { responsible: "responsavel_cumprimento" as const, status: "cumprimento_status" as const }
-    : { responsible: "responsavel_qualidade" as const, status: "qualidade_status" as const };
+    ? {
+        responsible: "responsavel_cumprimento" as const,
+        status: "cumprimento_status" as const,
+        baseStatus: "cumprimento_base_status" as const,
+      }
+    : {
+        responsible: "responsavel_qualidade" as const,
+        status: "qualidade_status" as const,
+        baseStatus: "qualidade_base_status" as const,
+      };
 }
 
 function sanitizeBulkSearchTerm(query: string | undefined) {

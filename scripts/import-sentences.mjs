@@ -154,6 +154,11 @@ function readSheet(workbookPath) {
 function buildPayload(row, rowNumber) {
   const warnings = [];
   const rawImportPayload = Object.fromEntries(Object.entries(row));
+  const cumprimentoStatus = normalizeStatus(get(row, "STATUS_CUMPRIMENTO"), warnings, "STATUS_CUMPRIMENTO", rowNumber);
+  const qualidadeStatus = normalizeStatus(get(row, "STATUS_QUALIDADE"), warnings, "STATUS_QUALIDADE", rowNumber);
+  const cumprimentoData = parseDate(get(row, "DATA_CUMPRIMENTO"), warnings, "DATA_CUMPRIMENTO", rowNumber);
+  const qualidadeData = parseDate(get(row, "DATA_QUALIDADE"), warnings, "DATA_QUALIDADE", rowNumber);
+  const dataUltimoEvento = parseDate(get(row, "DATA_ULTIMO_EVENTO"), warnings, "DATA_ULTIMO_EVENTO", rowNumber);
   const sentence = {
     import_row_number: rowNumber,
     legacy_id_sentenca: nullableText(get(row, "ID_SENTENCA")),
@@ -179,11 +184,16 @@ function buildPayload(row, rowNumber) {
     tipo_servico_raw: nullableText(get(row, "TIPO DE SERVICO")),
     responsavel_cumprimento: nullableText(get(row, "RESPONSAVELCUMPRIMENTO")),
     responsavel_qualidade: nullableText(get(row, "RESPONSÁVEL QUALIDADE")),
-    cumprimento_status: normalizeStatus(get(row, "STATUS_CUMPRIMENTO"), warnings, "STATUS_CUMPRIMENTO", rowNumber),
-    qualidade_status: normalizeStatus(get(row, "STATUS_QUALIDADE"), warnings, "STATUS_QUALIDADE", rowNumber),
-    cumprimento_data: parseDate(get(row, "DATA_CUMPRIMENTO"), warnings, "DATA_CUMPRIMENTO", rowNumber),
-    qualidade_data: parseDate(get(row, "DATA_QUALIDADE"), warnings, "DATA_QUALIDADE", rowNumber),
-    data_ultimo_evento: parseDate(get(row, "DATA_ULTIMO_EVENTO"), warnings, "DATA_ULTIMO_EVENTO", rowNumber),
+    cumprimento_status: cumprimentoStatus,
+    qualidade_status: qualidadeStatus,
+    cumprimento_data: cumprimentoData,
+    qualidade_data: qualidadeData,
+    data_ultimo_evento: dataUltimoEvento,
+    cumprimento_base_status: cumprimentoStatus,
+    qualidade_base_status: qualidadeStatus,
+    cumprimento_base_data: cumprimentoData,
+    qualidade_base_data: qualidadeData,
+    data_ultimo_evento_base: dataUltimoEvento,
     raw_import_payload: rawImportPayload,
     import_warnings: warnings,
   };

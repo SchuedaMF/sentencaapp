@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, FileText } from "lucide-react";
 import { EventPanel } from "@/components/event-panel";
+import { ProcessDuplicatesPanel } from "@/components/process-duplicates-panel";
 import { SalesforceOrdersPanel } from "@/components/salesforce-orders-panel";
-import { getEventResponsibleOptions, getSalesforceOrdersForProcess, getSentence, getSentenceEvents } from "@/lib/data";
+import { getEventResponsibleOptions, getSalesforceOrdersForProcess, getSentence, getSentenceEvents, getSentenceProcessDuplicates } from "@/lib/data";
 import { formatDate, statusTone } from "@/lib/normalization";
 import type { SentenceStatus } from "@/lib/types";
 
@@ -30,6 +31,7 @@ export default async function SentenceDetailPage({
   const eventsPromise = getSentenceEvents(id);
   const responsibleOptionsPromise = getEventResponsibleOptions();
   const salesforceOrdersPromise = getSalesforceOrdersForProcess(sentence.processo);
+  const processDuplicatesPromise = getSentenceProcessDuplicates(id);
   const backHref = safeQueueReturnHref(rawSearchParams.from) ?? "/fila?stage=QUALIDADE&status=EM+ANDAMENTO";
 
   return (
@@ -77,6 +79,14 @@ export default async function SentenceDetailPage({
             <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-200">{sentence.observacao ?? "-"}</p>
           </div>
 
+          <Suspense fallback={<ProcessDuplicatesPanelSkeleton />}>
+            <ProcessDuplicatesSection
+              currentSentence={sentence}
+              processDuplicatesPromise={processDuplicatesPromise}
+              returnHref={backHref}
+            />
+          </Suspense>
+
           <Suspense fallback={<SalesforceOrdersPanelSkeleton />}>
             <SalesforceOrdersSection salesforceOrdersPromise={salesforceOrdersPromise} />
           </Suspense>
@@ -92,6 +102,19 @@ export default async function SentenceDetailPage({
       </div>
     </>
   );
+}
+
+async function ProcessDuplicatesSection({
+  currentSentence,
+  processDuplicatesPromise,
+  returnHref,
+}: {
+  currentSentence: NonNullable<Awaited<ReturnType<typeof getSentence>>>;
+  processDuplicatesPromise: ReturnType<typeof getSentenceProcessDuplicates>;
+  returnHref: string;
+}) {
+  const processDuplicates = await processDuplicatesPromise;
+  return <ProcessDuplicatesPanel currentSentence={currentSentence} duplicates={processDuplicates} returnHref={returnHref} />;
 }
 
 async function SalesforceOrdersSection({
@@ -114,6 +137,21 @@ async function EventPanelSection({
 }) {
   const [events, responsibleOptions] = await Promise.all([eventsPromise, responsibleOptionsPromise]);
   return <EventPanel sentence={sentence} events={events} responsibleOptions={responsibleOptions} />;
+}
+
+function ProcessDuplicatesPanelSkeleton() {
+  return (
+    <section className="border border-zinc-800 bg-[#1d1e1c] p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <div className="h-7 w-64 animate-pulse rounded bg-zinc-800" />
+          <div className="mt-2 h-4 w-80 max-w-full animate-pulse rounded bg-zinc-800" />
+        </div>
+        <div className="h-7 w-32 animate-pulse rounded bg-zinc-800" />
+      </div>
+      <div className="h-28 animate-pulse rounded-md border border-zinc-800 bg-zinc-950/40" />
+    </section>
+  );
 }
 
 function SalesforceOrdersPanelSkeleton() {

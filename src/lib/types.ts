@@ -58,6 +58,11 @@ export type SentenceRecord = {
   cumprimento_data: string | null;
   qualidade_data: string | null;
   data_ultimo_evento: string | null;
+  cumprimento_base_status?: SentenceStatus | null;
+  qualidade_base_status?: SentenceStatus | null;
+  cumprimento_base_data?: string | null;
+  qualidade_base_data?: string | null;
+  data_ultimo_evento_base?: string | null;
   import_warnings?: unknown[];
 };
 
@@ -140,6 +145,33 @@ export type SalesforceOrdersSummary = {
   unknownRows: number;
   latestImportedAt: string | null;
   groups: SalesforceOrderGroup[];
+};
+
+export type SentenceProcessDuplicate = Pick<
+  SentenceRecord,
+  | "id"
+  | "legacy_id_sentenca"
+  | "processo"
+  | "autor"
+  | "cpf_cnpj"
+  | "uc"
+  | "municipio_raw"
+  | "tipo_decisao_normalized"
+  | "observacao"
+  | "responsavel_cumprimento"
+  | "responsavel_qualidade"
+  | "cumprimento_status"
+  | "qualidade_status"
+  | "cumprimento_data"
+  | "qualidade_data"
+  | "data_ultimo_evento"
+> & {
+  is_current: boolean;
+  event_count: number | string | null;
+  order_total: number | string | null;
+  order_open: number | string | null;
+  order_closed: number | string | null;
+  order_unknown: number | string | null;
 };
 
 export type DashboardPoint = {

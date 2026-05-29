@@ -1,8 +1,11 @@
-export type AppRole = "admin" | "gestor" | "operador";
+export type AppRole = "admin" | "gestor" | "operador" | "analista";
 export type WorkflowStage = "CUMPRIMENTO" | "QUALIDADE";
 export type EventType = "PENDENTE" | "ENTREGUE";
 export type SentenceStatus = "ENTREGUE" | "PENDENTE" | "EM ANDAMENTO" | "ESTOQUE";
 export type QueueStatusMode = "ALL" | SentenceStatus;
+export type ObfImportStatus = "importado" | "rejeitado" | "pendente";
+export type ObfImportStatusMode = "all" | ObfImportStatus;
+export type ObfImportViewMode = "arquivos" | "linhas";
 
 export type Profile = {
   id: string;
@@ -14,6 +17,7 @@ export type Profile = {
 
 export type ManagedUser = Profile & {
   created_at: string | null;
+  updated_at: string | null;
 };
 
 export type AssignableProfile = {
@@ -53,11 +57,13 @@ export type SentenceRecord = {
   tipo_servico_raw: string | null;
   responsavel_cumprimento: string | null;
   responsavel_qualidade: string | null;
+  pendencia: string | null;
   cumprimento_status: SentenceStatus | null;
   qualidade_status: SentenceStatus | null;
   cumprimento_data: string | null;
   qualidade_data: string | null;
   data_ultimo_evento: string | null;
+  pendencia_base?: string | null;
   cumprimento_base_status?: SentenceStatus | null;
   qualidade_base_status?: SentenceStatus | null;
   cumprimento_base_data?: string | null;
@@ -80,7 +86,9 @@ export type SentenceEvent = {
   legacy_id_andamento?: string | null;
   import_batch_id?: string | null;
   import_row_number?: number | null;
+  created_by?: string | null;
   created_at: string;
+  canEdit?: boolean;
 };
 
 export type SalesforceOrderStatusBucket = "open" | "closed" | "unknown";
@@ -147,6 +155,72 @@ export type SalesforceOrdersSummary = {
   groups: SalesforceOrderGroup[];
 };
 
+export type ObfImportVerificationRecord = {
+  id: string;
+  row_key: string | null;
+  arquivo_rel: string | null;
+  arquivo_size_bytes: number | string | null;
+  data_operacional: string | null;
+  escritorio: string | null;
+  tipo_fluxo: string | null;
+  linha_origem: number | null;
+  processo: string | null;
+  envio_bcc: string | null;
+  status_importacao: ObfImportStatus;
+  motivo_status: string | null;
+  destino_tabela: string | null;
+  imported_record_id: string | null;
+  import_batch_id: string | null;
+  importado_em: string | null;
+  verificado_em: string | null;
+  created_at: string;
+  updated_at: string;
+  batch_key?: string | null;
+};
+
+export type ObfImportFileRecord = {
+  batch_key: string;
+  import_batch_id: string | null;
+  file_name: string;
+  file_size_bytes: number | string | null;
+  imported_at: string | null;
+  source_kind: string | null;
+  total_rows: number | string;
+  importado_count: number | string;
+  rejeitado_count: number | string;
+  pendente_count: number | string;
+  warning_count: number | string;
+  inconsistency_count: number | string;
+  matched_rows: number | string;
+};
+
+export type ObfImportVerificationSummary = {
+  statusCounts: Record<ObfImportStatus, number>;
+  total: number;
+  offices: Array<[string, number]>;
+  rejectedReasons: Array<[string, number]>;
+  latestVerifiedAt: string | null;
+  isManager: boolean;
+};
+
+export type ObfImportVerificationResult = {
+  records: ObfImportVerificationRecord[];
+  nextCursor: string | null;
+  pageSize: number;
+  offset: number;
+  total: number;
+  isManager: boolean;
+};
+
+export type ObfImportFilesResult = {
+  files: ObfImportFileRecord[];
+  nextCursor: string | null;
+  pageSize: number;
+  offset: number;
+  total: number;
+  isManager: boolean;
+};
+
 export type SentenceProcessDuplicate = Pick<
   SentenceRecord,
   | "id"
@@ -184,18 +258,23 @@ export type DashboardPoint = {
 
 export type DashboardStatus = Record<Exclude<SentenceStatus, "ENTREGUE">, number>;
 export type ProductionKind = "cumprimento" | "qualidade";
+export type ProductionPeriod = "month" | "day";
 
 export type DashboardProductionRankingRow = {
   name: string;
   position: number;
   value: number;
+  total: number;
+  delivered: number;
+  pending: number;
   isCurrentUser: boolean;
 };
 
 export type DashboardProduction = {
   today: Record<ProductionKind, number>;
   month: Record<ProductionKind, number>;
-  ranking: Record<ProductionKind, DashboardProductionRankingRow[]>;
+  occurrenceDays: Record<ProductionKind, number>;
+  ranking: Record<ProductionKind, Record<ProductionPeriod, DashboardProductionRankingRow[]>>;
 };
 
 export type DashboardMetrics = {

@@ -43,7 +43,6 @@ as $$
    where responsible_value is not null
    group by stage, responsible_value;
 $$;
-
 create or replace function public.operational_queue_items(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -175,22 +174,16 @@ as $$
   offset (select page_offset from params)
   limit (select page_limit from params);
 $$;
-
 grant execute on function public.operational_queue_summary() to authenticated;
 grant execute on function public.operational_queue_items(public.workflow_stage, text, text, text, text, integer) to authenticated;
-
 create index if not exists sentences_queue_cumprimento_responsavel_status_event_idx
   on public.sentences (responsavel_cumprimento, cumprimento_status, data_ultimo_evento, id);
-
 create index if not exists sentences_queue_cumprimento_status_event_idx
   on public.sentences (cumprimento_status, data_ultimo_evento, id);
-
 create index if not exists sentences_queue_qualidade_responsavel_status_event_ready_idx
   on public.sentences (responsavel_qualidade, qualidade_status, data_ultimo_evento, id)
   where cumprimento_status = 'ENTREGUE';
-
 create index if not exists sentences_queue_qualidade_status_responsavel_event_ready_idx
   on public.sentences (qualidade_status, responsavel_qualidade, data_ultimo_evento, id)
   where cumprimento_status = 'ENTREGUE';
-
 analyze public.sentences;

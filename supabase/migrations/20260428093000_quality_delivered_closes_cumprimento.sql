@@ -80,11 +80,9 @@ begin
    where s.id = target_sentence_id;
 end;
 $$;
-
 revoke all on function public.recalculate_sentence_event_state(uuid) from public;
 revoke all on function public.recalculate_sentence_event_state(uuid) from anon;
 revoke all on function public.recalculate_sentence_event_state(uuid) from authenticated;
-
 do $$
 declare
   sentence_row record;

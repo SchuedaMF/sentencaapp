@@ -9,35 +9,36 @@ import { buildQueueHref } from "@/lib/queue";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", section: "dashboard", icon: BarChart3 },
   { href: buildQueueHref({ stage: "CUMPRIMENTO", status: "EM ANDAMENTO" }), label: "Fila", section: "fila", icon: ClipboardList },
-  { href: "/importacao", label: "Importação", section: "importacao", icon: Database },
-  { href: "/configuracoes", label: "Configurações", section: "configuracoes", icon: Settings },
+  { href: "/importacao", label: "Importacao", section: "importacao", icon: Database, managerOnly: true },
+  { href: "/configuracoes", label: "Configuracoes", section: "configuracoes", icon: Settings },
 ] as const;
 
-export function DesktopShellNavigation() {
+export function DesktopShellNavigation({ canAccessImportacao = true }: { canAccessImportacao?: boolean }) {
   const activeSection = useActiveSection();
 
-  return <DesktopNav activeSection={activeSection} />;
+  return <DesktopNav activeSection={activeSection} canAccessImportacao={canAccessImportacao} />;
 }
 
-export function DesktopShellNavigationFallback() {
-  return <DesktopNav activeSection={null} />;
+export function DesktopShellNavigationFallback({ canAccessImportacao = true }: { canAccessImportacao?: boolean }) {
+  return <DesktopNav activeSection={null} canAccessImportacao={canAccessImportacao} />;
 }
 
-export function MobileShellNavigation() {
+export function MobileShellNavigation({ canAccessImportacao = true }: { canAccessImportacao?: boolean }) {
   const activeSection = useActiveSection();
 
-  return <MobileNav activeSection={activeSection} />;
+  return <MobileNav activeSection={activeSection} canAccessImportacao={canAccessImportacao} />;
 }
 
-export function MobileShellNavigationFallback() {
-  return <MobileNav activeSection={null} />;
+export function MobileShellNavigationFallback({ canAccessImportacao = true }: { canAccessImportacao?: boolean }) {
+  return <MobileNav activeSection={null} canAccessImportacao={canAccessImportacao} />;
 }
 
-function DesktopNav({ activeSection }: { activeSection: string | null }) {
+function DesktopNav({ activeSection, canAccessImportacao }: { activeSection: string | null; canAccessImportacao: boolean }) {
+  const items = visibleNavItems(canAccessImportacao);
 
   return (
     <nav aria-label="Principal" className="flex flex-col items-center gap-2 py-4">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const active = item.section === activeSection;
 
         return (
@@ -62,13 +63,15 @@ function DesktopNav({ activeSection }: { activeSection: string | null }) {
   );
 }
 
-function MobileNav({ activeSection }: { activeSection: string | null }) {
+function MobileNav({ activeSection, canAccessImportacao }: { activeSection: string | null; canAccessImportacao: boolean }) {
+  const items = visibleNavItems(canAccessImportacao);
+
   return (
     <nav
       aria-label="Principal"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-zinc-800 bg-[#20211f]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className={`fixed inset-x-0 bottom-0 z-40 grid ${items.length === 3 ? "grid-cols-3" : "grid-cols-4"} border-t border-zinc-800 bg-[#20211f]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden`}
     >
-      {navItems.map((item) => {
+      {items.map((item) => {
         const active = item.section === activeSection;
 
         return (
@@ -90,6 +93,10 @@ function MobileNav({ activeSection }: { activeSection: string | null }) {
       })}
     </nav>
   );
+}
+
+function visibleNavItems(canAccessImportacao: boolean) {
+  return navItems.filter((item) => !("managerOnly" in item) || !item.managerOnly || canAccessImportacao);
 }
 
 function useActiveSection() {

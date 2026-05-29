@@ -10,15 +10,11 @@ create table if not exists public.salesforce_order_process_summaries (
   latest_imported_at timestamptz,
   updated_at timestamptz not null default now()
 );
-
 create index if not exists salesforce_order_process_summaries_order_sort_idx
   on public.salesforce_order_process_summaries (total_orders desc, open_orders desc, processo);
-
 alter table public.salesforce_order_process_summaries enable row level security;
-
 grant select on public.salesforce_order_process_summaries to authenticated;
 grant all on public.salesforce_order_process_summaries to service_role;
-
 drop policy if exists salesforce_order_process_summaries_select_by_sentence on public.salesforce_order_process_summaries;
 create policy salesforce_order_process_summaries_select_by_sentence on public.salesforce_order_process_summaries
 for select using (
@@ -29,7 +25,6 @@ for select using (
       and public.can_access_sentence(s)
   )
 );
-
 create or replace function public.refresh_salesforce_order_process_summaries()
 returns bigint
 language plpgsql
@@ -92,28 +87,20 @@ begin
   return refreshed_count;
 end;
 $$;
-
 revoke all on function public.refresh_salesforce_order_process_summaries() from public, anon, authenticated;
 grant execute on function public.refresh_salesforce_order_process_summaries() to service_role;
-
 select public.refresh_salesforce_order_process_summaries();
-
 create index if not exists sentences_cumprimento_stage_date_sort_idx
   on public.sentences (cumprimento_status, envio_bcc desc nulls last, id);
-
 create index if not exists sentences_cumprimento_stage_date_responsavel_sort_idx
   on public.sentences (responsavel_cumprimento, cumprimento_status, envio_bcc desc nulls last, id);
-
 create index if not exists sentences_qualidade_stage_date_sort_idx
   on public.sentences (qualidade_status, cumprimento_data desc nulls last, id)
   where cumprimento_status = 'ENTREGUE'::public.sentence_status;
-
 create index if not exists sentences_qualidade_stage_date_responsavel_sort_idx
   on public.sentences (responsavel_qualidade, qualidade_status, cumprimento_data desc nulls last, id)
   where cumprimento_status = 'ENTREGUE'::public.sentence_status;
-
 drop function if exists public.operational_queue_items_v3(public.workflow_stage, text, text, text, text, integer, text, text);
-
 create function public.operational_queue_items_v3(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -369,11 +356,8 @@ as $$
   where numbered.row_index <= p.page_limit
   order by numbered.row_index;
 $$;
-
 grant execute on function public.operational_queue_items_v3(public.workflow_stage, text, text, text, text, integer, text, text) to authenticated;
-
 drop function if exists public.dashboard_production_metrics(date);
-
 create function public.dashboard_production_metrics(today_arg date default current_date)
 returns table(
   person_key text,
@@ -429,10 +413,8 @@ as $$
   from grouped
   cross join params;
 $$;
-
 revoke all on function public.dashboard_production_metrics(date) from public, anon;
 grant execute on function public.dashboard_production_metrics(date) to authenticated;
-
 analyze public.sentences;
 analyze public.salesforce_orders;
 analyze public.salesforce_order_process_summaries;

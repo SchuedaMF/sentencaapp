@@ -120,5 +120,4 @@ as $$
   )
   from status_template, cumprimento_status, qualidade_status, points, people, totals;
 $$;
-
 grant execute on function public.dashboard_metrics(date, date) to authenticated;

@@ -1,15 +1,20 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, CheckCircle2, ClipboardList, GitCompareArrows } from "lucide-react";
+import { buildQueueCaseHref } from "@/lib/queue";
 import { formatDate, statusTone } from "@/lib/normalization";
 import type { SentenceProcessDuplicate, SentenceRecord, SentenceStatus } from "@/lib/types";
 
 export function ProcessDuplicatesPanel({
+  compact = false,
   currentSentence,
   duplicates,
+  queueCaseBaseHref,
   returnHref,
 }: {
+  compact?: boolean;
   currentSentence: SentenceRecord;
   duplicates: SentenceProcessDuplicate[];
+  queueCaseBaseHref?: string;
   returnHref?: string;
 }) {
   const current = duplicates.find((row) => row.id === currentSentence.id || row.is_current);
@@ -50,8 +55,10 @@ export function ProcessDuplicatesPanel({
       <div className="space-y-3">
         {related.map((sentence) => (
           <RelatedSentenceCard
+            compact={compact}
             currentSentence={currentSentence}
             key={sentence.id}
+            queueCaseBaseHref={queueCaseBaseHref}
             returnHref={returnHref}
             sentence={sentence}
           />
@@ -62,16 +69,21 @@ export function ProcessDuplicatesPanel({
 }
 
 function RelatedSentenceCard({
+  compact,
   currentSentence,
+  queueCaseBaseHref,
   returnHref,
   sentence,
 }: {
+  compact: boolean;
   currentSentence: SentenceRecord;
+  queueCaseBaseHref?: string;
   returnHref?: string;
   sentence: SentenceProcessDuplicate;
 }) {
   const comparison = compareObservations(currentSentence.observacao, sentence.observacao);
   const operationalFields = buildOperationalFields(sentence);
+  const fieldGridClassName = compact ? "mt-4 grid gap-3 text-sm sm:grid-cols-2" : "mt-4 grid gap-3 text-sm md:grid-cols-3";
 
   return (
     <article className="rounded-md border border-zinc-800 bg-zinc-950/30 p-4">
@@ -86,7 +98,7 @@ function RelatedSentenceCard({
         </div>
         <Link
           className="relative inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-zinc-700 px-2 text-xs font-semibold text-sky-100 transition-colors hover:border-sky-500/60 hover:bg-sky-500/15"
-          href={sentenceHref(sentence.id, returnHref)}
+          href={sentenceHref(sentence.id, returnHref, queueCaseBaseHref)}
           prefetch={false}
           title="Abrir registro relacionado"
         >
@@ -95,7 +107,7 @@ function RelatedSentenceCard({
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+      <div className={fieldGridClassName}>
         {operationalFields.map((field) => (
           <Info
             key={field.label}
@@ -194,7 +206,8 @@ function normalizeObservation(value: string | null | undefined) {
     .toUpperCase();
 }
 
-function sentenceHref(id: string, returnHref: string | undefined) {
+function sentenceHref(id: string, returnHref: string | undefined, queueCaseBaseHref: string | undefined) {
+  if (queueCaseBaseHref) return buildQueueCaseHref(queueCaseBaseHref, id);
   if (!returnHref) return `/sentencas/${id}`;
 
   const params = new URLSearchParams({ from: returnHref });

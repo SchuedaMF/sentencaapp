@@ -1,7 +1,6 @@
 -- Read-only support for showing sentence records that share the same processo.
 
 drop function if exists public.sentence_process_duplicates(uuid);
-
 create function public.sentence_process_duplicates(sentence_id_arg uuid)
 returns table(
   id uuid,
@@ -82,5 +81,4 @@ as $$
     r.data_ultimo_evento desc nulls last,
     r.id asc;
 $$;
-
 grant execute on function public.sentence_process_duplicates(uuid) to authenticated;

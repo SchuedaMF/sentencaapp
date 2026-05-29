@@ -42,19 +42,13 @@ as $$
    where responsible_value is not null
    group by responsible_value;
 $$;
-
 grant execute on function public.sentence_stage_filter_counts(public.workflow_stage) to authenticated;
-
 create index if not exists sentences_cumprimento_responsavel_status_event_idx
   on public.sentences (responsavel_cumprimento, cumprimento_status, data_ultimo_evento desc);
-
 create index if not exists sentences_qualidade_responsavel_status_event_idx
   on public.sentences (responsavel_qualidade, qualidade_status, data_ultimo_evento desc);
-
 create index if not exists sentences_cumprimento_status_responsavel_event_idx
   on public.sentences (cumprimento_status, responsavel_cumprimento, data_ultimo_evento desc);
-
 create index if not exists sentences_qualidade_status_responsavel_event_idx
   on public.sentences (qualidade_status, responsavel_qualidade, data_ultimo_evento desc);
-
 analyze public.sentences;

@@ -62,7 +62,6 @@ begin
    where s.id = target_sentence_id;
 end;
 $$;
-
 create or replace function public.apply_sentence_event()
 returns trigger
 language plpgsql
@@ -86,12 +85,10 @@ begin
   return coalesce(new, old);
 end;
 $$;
-
 drop trigger if exists sentence_events_apply_to_sentence on public.sentence_events;
 create trigger sentence_events_apply_to_sentence
 after insert or update or delete on public.sentence_events
 for each row execute function public.apply_sentence_event();
-
 do $$
 declare
   sentence_row record;

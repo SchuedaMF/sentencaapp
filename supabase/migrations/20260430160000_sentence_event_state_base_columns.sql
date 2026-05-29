@@ -4,7 +4,6 @@ alter table public.sentences
   add column if not exists cumprimento_base_data date,
   add column if not exists qualidade_base_data date,
   add column if not exists data_ultimo_evento_base date;
-
 create or replace function public._migration_sentence_raw_text(raw_payload jsonb, variadic keys text[])
 returns text
 language plpgsql
@@ -25,7 +24,6 @@ begin
   return null;
 end;
 $$;
-
 create or replace function public._migration_sentence_raw_status(raw_payload jsonb, variadic keys text[])
 returns public.sentence_status
 language plpgsql
@@ -49,7 +47,6 @@ begin
   return null;
 end;
 $$;
-
 create or replace function public._migration_sentence_raw_date(raw_payload jsonb, variadic keys text[])
 returns date
 language plpgsql
@@ -86,7 +83,6 @@ begin
   return parsed;
 end;
 $$;
-
 with operational_event_flags as (
   select
     sentence_id,
@@ -162,7 +158,6 @@ update public.sentences s
        )
   from base_values b
  where b.id = s.id;
-
 update public.sentences
    set cumprimento_base_status = 'EM ANDAMENTO'::public.sentence_status,
        qualidade_base_status = 'ESTOQUE'::public.sentence_status,
@@ -170,7 +165,6 @@ update public.sentences
        qualidade_base_data = null,
        data_ultimo_evento_base = null
  where processo = '0000920-03.2021.8.19.0076';
-
 create or replace function public.recalculate_sentence_event_state(target_sentence_id uuid)
 returns void
 language plpgsql
@@ -263,7 +257,6 @@ begin
    where s.id = target_sentence_id;
 end;
 $$;
-
 create or replace function public.apply_sentence_event()
 returns trigger
 language plpgsql
@@ -287,20 +280,16 @@ begin
   return coalesce(new, old);
 end;
 $$;
-
 drop trigger if exists sentence_events_apply_to_sentence on public.sentence_events;
 create trigger sentence_events_apply_to_sentence
 after insert or update or delete on public.sentence_events
 for each row execute function public.apply_sentence_event();
-
 revoke all on function public.recalculate_sentence_event_state(uuid) from public;
 revoke all on function public.recalculate_sentence_event_state(uuid) from anon;
 revoke all on function public.recalculate_sentence_event_state(uuid) from authenticated;
-
 revoke all on function public.apply_sentence_event() from public;
 revoke all on function public.apply_sentence_event() from anon;
 revoke all on function public.apply_sentence_event() from authenticated;
-
 do $$
 declare
   sentence_row record;
@@ -313,7 +302,6 @@ begin
   end loop;
 end;
 $$;
-
 drop function if exists public._migration_sentence_raw_date(jsonb, text[]);
 drop function if exists public._migration_sentence_raw_status(jsonb, text[]);
 drop function if exists public._migration_sentence_raw_text(jsonb, text[]);

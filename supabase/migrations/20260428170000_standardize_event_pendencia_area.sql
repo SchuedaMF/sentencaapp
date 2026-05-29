@@ -1,6 +1,5 @@
 alter table public.sentence_events
   drop constraint if exists sentence_events_pendencia_standard_check;
-
 create or replace function pg_temp.clean_event_area_text(value text)
 returns text
 language sql
@@ -8,7 +7,6 @@ immutable
 as $$
   select nullif(upper(trim(regexp_replace(replace(coalesce(value, ''), chr(160), ' '), '[[:space:]]+', ' ', 'g'))), '')
 $$;
-
 create or replace function pg_temp.event_taxonomy_key(value text)
 returns text
 language sql
@@ -25,7 +23,6 @@ as $$
     'g'
   )))
 $$;
-
 create or replace function pg_temp.standard_known_event_area(value text)
 returns text
 language sql
@@ -74,7 +71,6 @@ as $$
     else null
   end
 $$;
-
 create or replace function pg_temp.standard_event_area(value text)
 returns text
 language sql
@@ -85,7 +81,6 @@ as $$
     else coalesce(pg_temp.standard_known_event_area(value), pg_temp.clean_event_area_text(value))
   end
 $$;
-
 create or replace function pg_temp.standard_event_pendencia(value text)
 returns text
 language sql
@@ -108,7 +103,6 @@ as $$
     else case when pg_temp.standard_known_event_area(value) is not null then 'ÁREA' else null end
   end
 $$;
-
 with normalized as (
   select
     id,
@@ -132,7 +126,6 @@ update public.sentence_events target
      target.pendencia is distinct from normalized.pendencia
      or target.area is distinct from normalized.area
    );
-
 alter table public.sentence_events
   add constraint sentence_events_pendencia_standard_check
   check (

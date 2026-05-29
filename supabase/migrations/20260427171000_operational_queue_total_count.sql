@@ -1,7 +1,6 @@
 -- Include the exact filtered total with each queue page for precise pagination.
 
 drop function if exists public.operational_queue_items(public.workflow_stage, text, text, text, text, integer);
-
 create function public.operational_queue_items(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -139,5 +138,4 @@ as $$
   offset (select page_offset from params)
   limit (select page_limit from params);
 $$;
-
 grant execute on function public.operational_queue_items(public.workflow_stage, text, text, text, text, integer) to authenticated;

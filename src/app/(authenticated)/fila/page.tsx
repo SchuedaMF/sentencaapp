@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { SentenceExportButton } from "@/components/sentence-export-button";
 import { OperationalQueue, OperationalQueueSkeleton } from "@/components/operational-queue";
+import { canExportSentenceSpreadsheet, getCurrentProfile } from "@/lib/data";
 
 export const unstable_instant = {
   prefetch: "runtime",
@@ -25,11 +27,14 @@ export default async function FilaPage({
   }>;
 }) {
   await connection();
+  const profile = await getCurrentProfile();
+  const canExport = canExportSentenceSpreadsheet(profile);
 
   return (
     <>
-      <div className="border-b border-zinc-800 px-5 py-4">
-        <h1 className="text-xl font-semibold">Fila</h1>
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-5 py-4">
+        <h1 className="text-base font-semibold leading-6">Fila</h1>
+        {canExport ? <SentenceExportButton /> : null}
       </div>
       <Suspense fallback={<OperationalQueueSkeleton />}>
         <OperationalQueue searchParams={searchParams} />

@@ -1,15 +1,12 @@
 -- Speed up the operational queue by avoiding full filtered counts on every page load.
 
 create extension if not exists pg_trgm;
-
 create index if not exists sentences_queue_search_trgm_idx
   on public.sentences using gin (
     (upper(coalesce(processo, '') || ' ' || coalesce(autor, '') || ' ' || coalesce(cpf_cnpj, '') || ' ' || coalesce(uc, ''))) gin_trgm_ops
   );
-
 create index if not exists sentence_events_sentence_date_idx
   on public.sentence_events (sentence_id, data_evento desc, created_at desc);
-
 create or replace function public.operational_queue_summary(
   stage_arg public.workflow_stage default 'CUMPRIMENTO',
   responsible_arg text default null,
@@ -87,9 +84,7 @@ as $$
    where responsible_value is not null
    group by stage, responsible_value;
 $$;
-
 drop function if exists public.operational_queue_items(public.workflow_stage, text, text, text, text, integer);
-
 create function public.operational_queue_items(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -223,9 +218,7 @@ as $$
   offset (select page_offset from params)
   limit (select page_limit from params);
 $$;
-
 grant execute on function public.operational_queue_summary(public.workflow_stage, text, text) to authenticated;
 grant execute on function public.operational_queue_items(public.workflow_stage, text, text, text, text, integer) to authenticated;
-
 analyze public.sentences;
 analyze public.sentence_events;

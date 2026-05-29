@@ -3,13 +3,15 @@
 import { UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useTransition, type ChangeEvent } from "react";
-import { buildQueueHref, type QueueSortDirection, type QueueSortKey, type QueueViewMode } from "@/lib/queue";
+import { buildQueueHref, type QueuePendenciaFilter, type QueueSlaBucket, type QueueSortDirection, type QueueSortKey, type QueueViewMode } from "@/lib/queue";
 import type { QueueStatusMode, WorkflowStage } from "@/lib/types";
 
 type QueueResponsibleFilterProps = {
   options: Array<[string, number]>;
+  pendencia?: QueuePendenciaFilter;
   query?: string;
   responsible?: string;
+  slaBucket?: QueueSlaBucket;
   stage: WorkflowStage;
   status: QueueStatusMode;
   sort?: QueueSortKey;
@@ -19,8 +21,10 @@ type QueueResponsibleFilterProps = {
 
 export function QueueResponsibleFilter({
   options,
+  pendencia,
   query,
   responsible,
+  slaBucket,
   stage,
   status,
   sort,
@@ -36,9 +40,9 @@ export function QueueResponsibleFilter({
   const visibleOptions = hasCurrentOption ? responsibleOptions : [[currentValue, 0] as [string, number], ...responsibleOptions];
 
   function handleChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextResponsible = event.target.value === "ALL" ? undefined : event.target.value;
+    const nextResponsible = event.target.value;
     startTransition(() => {
-      router.push(buildQueueHref({ stage, status, query, responsible: nextResponsible, view, sort, sortDirection }));
+      router.push(buildQueueHref({ stage, status, pendencia, query, responsible: nextResponsible, slaBucket, view, sort, sortDirection }));
     });
   }
 

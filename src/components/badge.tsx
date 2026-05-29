@@ -3,7 +3,7 @@ import type { SentenceStatus } from "@/lib/types";
 
 export function StatusBadge({ status }: { status: SentenceStatus | null | undefined }) {
   return (
-    <span className={`inline-flex h-7 items-center rounded-md border px-2 text-xs font-semibold ${statusTone(status)}`}>
+    <span className={`inline-flex h-7 items-center whitespace-nowrap rounded-md border px-2 text-xs font-semibold ${statusTone(status)}`}>
       {status ?? "SEM STATUS"}
     </span>
   );

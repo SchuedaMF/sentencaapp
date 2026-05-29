@@ -32,24 +32,18 @@ create table if not exists public.salesforce_orders (
   raw_import_payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
-
 create index if not exists salesforce_orders_latest_processo_idx
   on public.salesforce_orders (processo, opened_at desc, import_row_number desc)
   where is_latest;
-
 create index if not exists salesforce_orders_import_batch_idx
   on public.salesforce_orders (import_batch_id);
-
 create index if not exists salesforce_orders_status_bucket_idx
   on public.salesforce_orders (status_bucket)
   where is_latest;
-
 create index if not exists salesforce_orders_order_key_idx
   on public.salesforce_orders (order_key)
   where is_latest and order_key is not null;
-
 alter table public.salesforce_orders enable row level security;
-
 drop policy if exists salesforce_orders_select_by_sentence on public.salesforce_orders;
 create policy salesforce_orders_select_by_sentence on public.salesforce_orders
 for select using (
@@ -60,7 +54,6 @@ for select using (
       and public.can_access_sentence(s)
   )
 );
-
 drop policy if exists salesforce_orders_manager_write on public.salesforce_orders;
 create policy salesforce_orders_manager_write on public.salesforce_orders
 for all using (public.is_manager())

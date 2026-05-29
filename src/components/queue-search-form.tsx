@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, type FormEvent } from "react";
-import { buildQueueHref, parseQueueResponsible, parseQueueSortDirection, parseQueueSortKey, parseQueueStage, parseQueueStatus, parseQueueView, type QueueSortDirection, type QueueSortKey, type QueueViewMode } from "@/lib/queue";
+import { buildQueueHref, parseQueuePendencia, parseQueueResponsible, parseQueueSlaBucket, parseQueueSortDirection, parseQueueSortKey, parseQueueStage, parseQueueStatus, parseQueueView, type QueuePendenciaFilter, type QueueSlaBucket, type QueueSortDirection, type QueueSortKey, type QueueViewMode } from "@/lib/queue";
 import type { QueueStatusMode, WorkflowStage } from "@/lib/types";
 
 type SearchFormProps = {
@@ -27,8 +27,10 @@ export function GlobalQueueSearch({ className = "" }: { className?: string }) {
     const view = onQueuePage ? parseQueueView(searchParams.get("view") ?? undefined) : "operational";
     const sort = onQueuePage ? parseQueueSortKey(searchParams.get("sort") ?? undefined, stage) : undefined;
     const sortDirection = onQueuePage ? parseQueueSortDirection(searchParams.get("dir") ?? undefined) : "asc";
+    const slaBucket = onQueuePage ? parseQueueSlaBucket(searchParams.get("sla") ?? undefined, stage) : undefined;
+    const pendencia = onQueuePage && status === "PENDENTE" ? parseQueuePendencia(searchParams.get("pendencia") ?? undefined) : undefined;
 
-    router.push(buildQueueHref({ stage, status, query, responsible, view, sort, sortDirection }));
+    router.push(buildQueueHref({ stage, status, pendencia, query, responsible, slaBucket, view, sort, sortDirection }));
   }
 
   return (
@@ -43,7 +45,9 @@ export function GlobalQueueSearch({ className = "" }: { className?: string }) {
 export function QueueInlineSearch({
   className = "",
   initialQuery,
+  pendencia,
   responsible,
+  slaBucket,
   stage,
   status,
   sort,
@@ -52,7 +56,9 @@ export function QueueInlineSearch({
 }: {
   className?: string;
   initialQuery?: string;
+  pendencia?: QueuePendenciaFilter;
   responsible?: string;
+  slaBucket?: QueueSlaBucket;
   stage: WorkflowStage;
   status: QueueStatusMode;
   sort?: QueueSortKey;
@@ -62,7 +68,7 @@ export function QueueInlineSearch({
   const router = useRouter();
 
   function handleSearch(query: string) {
-    router.push(buildQueueHref({ stage, status, query, responsible, view, sort, sortDirection }));
+    router.push(buildQueueHref({ stage, status, pendencia, query, responsible, slaBucket, view, sort, sortDirection }));
   }
 
   return (

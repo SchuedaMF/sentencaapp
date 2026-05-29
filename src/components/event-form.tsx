@@ -34,7 +34,9 @@ export function EventForm({
   const isEditing = Boolean(event);
   const eventTitle = event ? buildEventTitle(sentence, event) : null;
   const defaults = getDefaultValues(sentence, responsibleOptions, event);
+  const [tipoEvento, setTipoEvento] = useState(defaults.tipoEvento);
   const [areaSelectValue, setAreaSelectValue] = useState(defaults.areaSelectValue);
+  const isPendingEvent = tipoEvento === "PENDENTE";
   const showAreaCustom = areaSelectValue === eventAreaOtherValue;
   const message = deleteState?.message ?? saveState?.message;
   const messageIsPositive = deleteState?.message ? deleteState.ok : saveState?.ok;
@@ -90,7 +92,13 @@ export function EventForm({
 
         <label>
           <span className="mb-1 block text-xs font-semibold uppercase text-zinc-400">Tipo evento</span>
-          <select name="tipoEvento" required defaultValue={defaults.tipoEvento} className="h-10 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm">
+          <select
+            name="tipoEvento"
+            required
+            value={tipoEvento}
+            onChange={(event) => setTipoEvento(event.target.value as typeof tipoEvento)}
+            className="h-10 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm"
+          >
             <option value="PENDENTE">PENDENTE</option>
             <option value="ENTREGUE">ENTREGUE</option>
           </select>
@@ -133,6 +141,8 @@ export function EventForm({
           <span className="mb-1 block text-xs font-semibold uppercase text-zinc-400">Pendência</span>
           <select
             name="pendencia"
+            required={isPendingEvent}
+            aria-required={isPendingEvent}
             defaultValue={defaults.pendencia}
             className="h-10 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm"
           >
@@ -196,6 +206,7 @@ export function EventForm({
           <button
             type="submit"
             formAction={deleteAction}
+            formNoValidate
             onClick={(event) => {
               if (!window.confirm("Excluir este evento?")) event.preventDefault();
             }}

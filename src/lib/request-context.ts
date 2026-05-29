@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { sampleProfile } from "@/lib/sample-data";
+import { canManageOperationalData, canViewAllOperationalData } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 
@@ -11,6 +12,7 @@ export type AppRequestContext = {
   userId: string | null;
   profile: Profile;
   isManager: boolean;
+  canViewAllData: boolean;
   responsibleName: string;
 };
 
@@ -22,6 +24,7 @@ export const getAppRequestContext = cache(async (): Promise<AppRequestContext> =
       userId: null,
       profile: sampleProfile,
       isManager: true,
+      canViewAllData: true,
       responsibleName: sampleProfile.full_name ?? sampleProfile.email,
     };
   }
@@ -36,6 +39,7 @@ export const getAppRequestContext = cache(async (): Promise<AppRequestContext> =
     .maybeSingle();
 
   if (error) throw new Error(`getAppRequestContext failed: ${error.message}`);
+  if (data && !data.active) redirect("/login?error=Usuario%20inativo");
 
   const profile = data
     ? (data as Profile)
@@ -51,11 +55,8 @@ export const getAppRequestContext = cache(async (): Promise<AppRequestContext> =
     supabase,
     userId: auth.user.id,
     profile,
-    isManager: canManageProfile(profile),
+    isManager: canManageOperationalData(profile),
+    canViewAllData: canViewAllOperationalData(profile),
     responsibleName: profile.full_name?.trim() || profile.email,
   };
 });
-
-function canManageProfile(profile: Pick<Profile, "active" | "role">) {
-  return profile.active && (profile.role === "admin" || profile.role === "gestor");
-}

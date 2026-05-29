@@ -1,2 +1,9 @@
 .env
 .env.*
+.next/
+.vercel/output/
+node_modules/
+*.log
+apps/
+outputs/
+supabase/.temp/

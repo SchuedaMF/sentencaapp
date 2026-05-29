@@ -43,7 +43,7 @@ export function currentStageDate(sentence: SentenceRecord, stage: WorkflowStage)
 }
 
 export function queueSlaDays(sentence: SentenceRecord, stage: WorkflowStage) {
-  const startValue = stage === "CUMPRIMENTO" ? sentence.envio_bcc : sentence.data_ultimo_evento;
+  const startValue = stage === "CUMPRIMENTO" ? sentence.tratado : sentence.data_ultimo_evento;
   if (!startValue) return null;
 
   const start = parseISO(startValue);

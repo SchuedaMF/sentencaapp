@@ -83,6 +83,5 @@ as $$
     r.data_ultimo_evento desc nulls last,
     r.id asc;
 $$;
-
 grant execute on function public.sentence_process_duplicates(uuid) to authenticated;
 grant execute on function public.sentence_process_duplicates(uuid) to service_role;

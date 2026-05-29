@@ -3,14 +3,11 @@
 create index if not exists sentences_envio_bcc_idx
   on public.sentences (envio_bcc)
   where envio_bcc is not null;
-
 create index if not exists sentence_events_event_date_stage_type_responsavel_idx
   on public.sentence_events (data_evento, etapa, tipo_evento, responsavel);
-
 create index if not exists sentences_open_overdue_idx
   on public.sentences (prazo_fatal)
   where cumprimento_status is distinct from 'ENTREGUE'::public.sentence_status;
-
 create or replace function public.dashboard_metrics(from_arg date default null, to_arg date default null)
 returns jsonb
 language sql
@@ -133,9 +130,7 @@ as $$
   )
   from status_template, cumprimento_status, qualidade_status, points, people, totals;
 $$;
-
 grant execute on function public.dashboard_metrics(date, date) to authenticated;
-
 create or replace function public.queue_status_rank(status_arg public.sentence_status)
 returns smallint
 language sql
@@ -149,7 +144,6 @@ as $$
     else 5::smallint
   end
 $$;
-
 create index if not exists sentences_queue_keyset_cumprimento_responsavel_idx
   on public.sentences (
     responsavel_cumprimento,
@@ -157,14 +151,12 @@ create index if not exists sentences_queue_keyset_cumprimento_responsavel_idx
     coalesce(data_ultimo_evento, '9999-12-31'::date),
     id
   );
-
 create index if not exists sentences_queue_keyset_cumprimento_idx
   on public.sentences (
     public.queue_status_rank(cumprimento_status),
     coalesce(data_ultimo_evento, '9999-12-31'::date),
     id
   );
-
 create index if not exists sentences_queue_keyset_qualidade_responsavel_idx
   on public.sentences (
     responsavel_qualidade,
@@ -173,7 +165,6 @@ create index if not exists sentences_queue_keyset_qualidade_responsavel_idx
     id
   )
   where cumprimento_status = 'ENTREGUE'::public.sentence_status;
-
 create index if not exists sentences_queue_keyset_qualidade_idx
   on public.sentences (
     public.queue_status_rank(qualidade_status),
@@ -181,7 +172,6 @@ create index if not exists sentences_queue_keyset_qualidade_idx
     id
   )
   where cumprimento_status = 'ENTREGUE'::public.sentence_status;
-
 create or replace function public.operational_queue_items_v2(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -375,8 +365,6 @@ as $$
   where numbered.row_index <= p.page_limit
   order by numbered.row_index;
 $$;
-
 grant execute on function public.operational_queue_items_v2(public.workflow_stage, text, text, text, text, integer) to authenticated;
-
 analyze public.sentences;
 analyze public.sentence_events;

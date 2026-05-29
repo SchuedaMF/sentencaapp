@@ -8,8 +8,12 @@ import {
   MobileShellNavigation,
   MobileShellNavigationFallback,
 } from "@/components/shell-navigation";
+import { canManageUsers, getCurrentProfile } from "@/lib/data";
 
-export function AppShell({ account, children }: { account: React.ReactNode; children: React.ReactNode }) {
+export function AppShell({ account, children }: {
+  account: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-[#171817] text-zinc-100">
       <header className="sticky top-0 z-30 flex h-16 items-center border-b border-zinc-800 bg-[#20211f] px-4">
@@ -30,17 +34,27 @@ export function AppShell({ account, children }: { account: React.ReactNode; chil
       </div>
       <div className="flex">
         <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-[70px] border-r border-zinc-800 bg-[#242523] md:block">
-          <Suspense fallback={<DesktopShellNavigationFallback />}>
-            <DesktopShellNavigation />
+          <Suspense fallback={<DesktopShellNavigationFallback canAccessImportacao={false} />}>
+            <DesktopNavigationWithAccess />
           </Suspense>
         </aside>
         <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
       </div>
-      <Suspense fallback={<MobileShellNavigationFallback />}>
-        <MobileShellNavigation />
+      <Suspense fallback={<MobileShellNavigationFallback canAccessImportacao={false} />}>
+        <MobileNavigationWithAccess />
       </Suspense>
     </div>
   );
+}
+
+async function DesktopNavigationWithAccess() {
+  const profile = await getCurrentProfile();
+  return <DesktopShellNavigation canAccessImportacao={canManageUsers(profile)} />;
+}
+
+async function MobileNavigationWithAccess() {
+  const profile = await getCurrentProfile();
+  return <MobileShellNavigation canAccessImportacao={canManageUsers(profile)} />;
 }
 
 function QueueSearchFallback({ className = "" }: { className?: string }) {

@@ -10,6 +10,79 @@ const rootDir = path.resolve(__dirname, "..");
 const defaultWorkbook = "C:/Users/jur.david/Documents/Base RJ - Sentença.xlsx";
 
 const canonicalStatus = new Set(["ENTREGUE", "PENDENTE", "EM ANDAMENTO", "ESTOQUE"]);
+const eventPendingAliases = new Map([
+  ["AREA", "ÁREA"],
+  ["QUESTIONADO", "QUESTIONAMENTO AO ESCRITÓRIO"],
+  ["QUESTIONADOAOESCRITORIO", "QUESTIONAMENTO AO ESCRITÓRIO"],
+  ["QUESTIONADO AO ESCRITORIO", "QUESTIONAMENTO AO ESCRITÓRIO"],
+  ["QUESTIONAMENTO AO ESCRITORIO", "QUESTIONAMENTO AO ESCRITÓRIO"],
+  ["ESCRITORIO", "QUESTIONAMENTO AO ESCRITÓRIO"],
+  ["PETICIONAR", "PETICIONADO"],
+  ["PETICIONAMENTO ESCRITORIO", "PETICIONADO"],
+  ["PETICIONADO", "PETICIONADO"],
+  ["CUMPRIMENTO INCOMPLETO", "CUMPRIMENTO INCORRETO"],
+  ["CUMPRIMENTO INCORRETO", "CUMPRIMENTO INCORRETO"],
+  ["ANALISE DE CONS INCLUIDO", "ÁREA"],
+  ["CANCELAR DEBITO", "ÁREA"],
+]);
+const eventAreaOptions = new Set([
+  "ALTERAÇÕES CADASTRAIS",
+  "REFATURAMENTO",
+  "ENVIO DE AR",
+  "TOI",
+  "FATURAMENTO",
+  "VISTORIA",
+  "MANUTENÇÃO",
+  "COBRANÇA PROTESTO/ESPECIAIS",
+  "LIGAÇÃO NOVA",
+  "CANCELAMENTO DE TOI",
+  "CORTE/RELIGAÇÃO",
+  "SUBSTITUIÇÃO DE MEDIDOR",
+  "TROCA DE TITULARIDADE",
+  "CRÉDITO ACORDO",
+  "RCE",
+  "ESCRITÓRIO",
+  "EVIDÊNCIAS",
+  "GD",
+  "OBRAS",
+  "PARCELAMENTO",
+  "ACRÉSCIMO DE CARGA",
+  "BAIXA RENDA",
+  "ENCERRAMENTO CONTRATUAL",
+  "GRUPO A",
+  "REFORMA DE PADRÃO",
+  "RELIGAÇÃO",
+  "REPARO MEDIDOR",
+  "RESSARCIMENTO",
+  "TRANSFERÊNCIA DE DÉBITOS",
+]);
+const eventAreaAliases = new Map([
+  ["AREA", null],
+  ["ALT CADASTRAIS", "ALTERAÇÕES CADASTRAIS"],
+  ["ALTERACAO CADASTRAL", "ALTERAÇÕES CADASTRAIS"],
+  ["ALTERACOES CADASTRAIS", "ALTERAÇÕES CADASTRAIS"],
+  ["ACRESCIMO DE CARGA", "ACRÉSCIMO DE CARGA"],
+  ["AR", "ENVIO DE AR"],
+  ["ENVIO DE A.R", "ENVIO DE AR"],
+  ["ENVIO DE AR", "ENVIO DE AR"],
+  ["MANUTENCAO", "MANUTENÇÃO"],
+  ["COBRANCA PROTESTO/ESPECIAIS", "COBRANÇA PROTESTO/ESPECIAIS"],
+  ["LIGACAO NOVA", "LIGAÇÃO NOVA"],
+  ["CANCELAMENTO TOI", "CANCELAMENTO DE TOI"],
+  ["CANCELAMENTO DE TOI", "CANCELAMENTO DE TOI"],
+  ["CORTE/RELIGACAO", "CORTE/RELIGAÇÃO"],
+  ["SUBSTITUICAO DE MEDIDDOR", "SUBSTITUIÇÃO DE MEDIDOR"],
+  ["SUBSTITUICAO DE MEDIDOR", "SUBSTITUIÇÃO DE MEDIDOR"],
+  ["CREDITO ACORDO", "CRÉDITO ACORDO"],
+  ["ESCRITORIO", "ESCRITÓRIO"],
+  ["ESC", "ESCRITÓRIO"],
+  ["EVIDENCIAS", "EVIDÊNCIAS"],
+  ["GD", "GD"],
+  ["REFAT GD", "GD"],
+  ["REFORMA DE PADRAO", "REFORMA DE PADRÃO"],
+  ["RELIGACAO", "RELIGAÇÃO"],
+  ["TRANSFERENCIA DE DEBITOS", "TRANSFERÊNCIA DE DÉBITOS"],
+]);
 const ignoredOperationalFields = ["STATUS CUMPRIMENTO", "STATUS QUALIDADE", "DATA DO INGRESSO CUMPRIMENTO", "DATA QUALIDADE", "DATA_PENDENTE"];
 const legacyComparisons = [
   ["STATUS CUMPRIMENTO", "STATUS_CUMPRIMENTO"],
@@ -51,6 +124,52 @@ function normalizeStatus(value, warnings, fieldName, rowNumber) {
     rowNumber,
     fieldName,
     message: `Status invalido tratado como vazio: ${String(value)}`,
+  });
+  return null;
+}
+
+function cleanEventTaxonomyText(value) {
+  const text = nullableText(value)?.replace(/\s+/g, " ").trim() ?? "";
+  return text ? text.toLocaleUpperCase("pt-BR") : "";
+}
+
+function normalizeEventTaxonomyKey(value) {
+  return cleanEventTaxonomyText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function canonicalizeKnownEventArea(value) {
+  const key = normalizeEventTaxonomyKey(value);
+  if (!key) return null;
+  if (eventAreaAliases.has(key)) return eventAreaAliases.get(key);
+
+  const cleaned = cleanEventTaxonomyText(value);
+  return eventAreaOptions.has(cleaned) ? cleaned : null;
+}
+
+function canonicalizeEventPendencia(value) {
+  const key = normalizeEventTaxonomyKey(value);
+  if (!key) return null;
+
+  const direct = eventPendingAliases.get(key);
+  if (direct) return direct;
+
+  return canonicalizeKnownEventArea(value) ? "ÁREA" : null;
+}
+
+function normalizePendencia(value, warnings, fieldName, rowNumber) {
+  const raw = nullableText(value);
+  if (!raw) return null;
+
+  const normalized = canonicalizeEventPendencia(raw);
+  if (normalized) return normalized;
+
+  warnings.push({
+    severity: "warning",
+    rowNumber,
+    fieldName,
+    message: `Pendencia invalida tratada como vazio: ${String(value)}`,
   });
   return null;
 }
@@ -159,6 +278,8 @@ function buildPayload(row, rowNumber) {
   const cumprimentoData = parseDate(get(row, "DATA_CUMPRIMENTO"), warnings, "DATA_CUMPRIMENTO", rowNumber);
   const qualidadeData = parseDate(get(row, "DATA_QUALIDADE"), warnings, "DATA_QUALIDADE", rowNumber);
   const dataUltimoEvento = parseDate(get(row, "DATA_ULTIMO_EVENTO"), warnings, "DATA_ULTIMO_EVENTO", rowNumber);
+  const normalizedPendencia = normalizePendencia(get(row, "PENDENCIA"), warnings, "PENDENCIA", rowNumber);
+  const currentPendencia = cumprimentoStatus === "PENDENTE" || qualidadeStatus === "PENDENTE" ? normalizedPendencia : null;
   const sentence = {
     import_row_number: rowNumber,
     legacy_id_sentenca: nullableText(get(row, "ID_SENTENCA")),
@@ -184,6 +305,7 @@ function buildPayload(row, rowNumber) {
     tipo_servico_raw: nullableText(get(row, "TIPO DE SERVICO")),
     responsavel_cumprimento: nullableText(get(row, "RESPONSAVELCUMPRIMENTO")),
     responsavel_qualidade: nullableText(get(row, "RESPONSÁVEL QUALIDADE")),
+    pendencia: currentPendencia,
     cumprimento_status: cumprimentoStatus,
     qualidade_status: qualidadeStatus,
     cumprimento_data: cumprimentoData,
@@ -194,6 +316,7 @@ function buildPayload(row, rowNumber) {
     cumprimento_base_data: cumprimentoData,
     qualidade_base_data: qualidadeData,
     data_ultimo_evento_base: dataUltimoEvento,
+    pendencia_base: currentPendencia,
     raw_import_payload: rawImportPayload,
     import_warnings: warnings,
   };
@@ -248,7 +371,7 @@ async function writePreview(outputPath, records, report) {
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
-        canonicalFields: ["STATUS_CUMPRIMENTO", "STATUS_QUALIDADE", "DATA_CUMPRIMENTO", "DATA_QUALIDADE", "DATA_ULTIMO_EVENTO"],
+        canonicalFields: ["STATUS_CUMPRIMENTO", "STATUS_QUALIDADE", "DATA_CUMPRIMENTO", "DATA_QUALIDADE", "DATA_ULTIMO_EVENTO", "PENDENCIA"],
         ignoredOperationalFields,
         report,
         sample: records.slice(0, 20),

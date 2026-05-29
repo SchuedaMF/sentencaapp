@@ -9,11 +9,12 @@ type ClickableTableRowProps = {
   label: string;
   children: ReactNode;
   className?: string;
+  scroll?: boolean;
 };
 
 const interactiveSelector = 'a, button, input, select, textarea, [role="button"], [role="link"], [data-row-interactive="true"]';
 
-export function ClickableTableRow({ href, label, children, className }: ClickableTableRowProps) {
+export function ClickableTableRow({ href, label, children, className, scroll = true }: ClickableTableRowProps) {
   const router = useRouter();
   const prefetchedRef = useRef(false);
 
@@ -29,7 +30,7 @@ export function ClickableTableRow({ href, label, children, className }: Clickabl
       return;
     }
 
-    router.push(href);
+    router.push(href, { scroll });
   }
 
   function handleClick(event: MouseEvent<HTMLTableRowElement>) {
@@ -50,7 +51,7 @@ export function ClickableTableRow({ href, label, children, className }: Clickabl
 
     event.preventDefault();
     prefetchCase();
-    router.push(href);
+    router.push(href, { scroll });
   }
 
   return (

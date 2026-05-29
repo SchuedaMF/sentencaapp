@@ -3,14 +3,11 @@ alter table public.sentence_events
   add column if not exists legacy_id_andamento text,
   add column if not exists import_batch_id uuid references public.import_batches(id) on delete set null,
   add column if not exists import_row_number integer;
-
 create unique index if not exists sentence_events_legacy_id_andamento_uidx
   on public.sentence_events (legacy_id_andamento);
-
 create index if not exists sentence_events_operational_sentence_stage_date_idx
   on public.sentence_events (sentence_id, etapa, data_evento desc, created_at desc, id desc)
   where affects_operational_state;
-
 create or replace function public.recalculate_sentence_event_state(target_sentence_id uuid)
 returns void
 language plpgsql
@@ -103,7 +100,6 @@ begin
    where s.id = target_sentence_id;
 end;
 $$;
-
 revoke all on function public.recalculate_sentence_event_state(uuid) from public;
 revoke all on function public.recalculate_sentence_event_state(uuid) from anon;
 revoke all on function public.recalculate_sentence_event_state(uuid) from authenticated;

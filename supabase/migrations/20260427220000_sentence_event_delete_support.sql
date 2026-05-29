@@ -9,7 +9,6 @@ using (
       and public.can_access_sentence(s)
   )
 );
-
 drop trigger if exists sentence_events_apply_to_sentence on public.sentence_events;
 create trigger sentence_events_apply_to_sentence
 after insert or update or delete on public.sentence_events

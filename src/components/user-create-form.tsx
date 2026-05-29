@@ -16,7 +16,7 @@ export function UserCreateForm() {
     <form action={action} className="grid gap-4 border border-zinc-800 bg-[#1d1e1c] p-5">
       <div className="flex items-center gap-2">
         <UserPlus className="h-5 w-5 text-sky-300" />
-        <h2 className="text-lg font-semibold">Novo operador</h2>
+        <h2 className="text-lg font-semibold">Novo perfil</h2>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <label>
@@ -41,6 +41,18 @@ export function UserCreateForm() {
         </label>
       </div>
       <label>
+        <span className="mb-1 block text-xs font-semibold uppercase text-zinc-400">Perfil</span>
+        <select
+          name="role"
+          defaultValue="operador"
+          className="h-10 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 text-sm outline-none [color-scheme:dark] focus:border-sky-500"
+        >
+          <option value="operador">Operador</option>
+          <option value="analista">Analista</option>
+        </select>
+        {state.errors?.role ? <span className="mt-1 block text-xs text-red-300">{state.errors.role[0]}</span> : null}
+      </label>
+      <label>
         <span className="mb-1 block text-xs font-semibold uppercase text-zinc-400">Senha temporária</span>
         <input
           name="password"
@@ -61,7 +73,7 @@ export function UserCreateForm() {
         className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-        Criar operador
+        Criar perfil
       </button>
     </form>
   );

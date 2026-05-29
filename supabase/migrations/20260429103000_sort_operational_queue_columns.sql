@@ -2,7 +2,6 @@
 
 drop function if exists public.operational_queue_items_v2(public.workflow_stage, text, text, text, text, integer, text, text);
 drop function if exists public.operational_queue_items_v2(public.workflow_stage, text, text, text, text, integer);
-
 create function public.operational_queue_items_v2(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -272,10 +271,8 @@ as $$
   where numbered.row_index <= p.page_limit
   order by numbered.row_index;
 $$;
-
 drop function if exists public.operational_queue_items(public.workflow_stage, text, text, text, text, integer, text, text);
 drop function if exists public.operational_queue_items(public.workflow_stage, text, text, text, text, integer);
-
 create function public.operational_queue_items(
   stage_arg public.workflow_stage,
   status_mode_arg text default 'PRIORITY',
@@ -337,9 +334,7 @@ as $$
     sort_direction_arg
   ) q;
 $$;
-
 grant execute on function public.operational_queue_items_v2(public.workflow_stage, text, text, text, text, integer, text, text) to authenticated;
 grant execute on function public.operational_queue_items(public.workflow_stage, text, text, text, text, integer, text, text) to authenticated;
-
 analyze public.sentences;
 analyze public.salesforce_orders;

@@ -1,5 +1,6 @@
-import type { DashboardMetrics, DashboardProduction, DashboardStatus, ProductionKind, Profile, SalesforceOrderRecord, SentenceEvent, SentenceRecord, SentenceStatus } from "@/lib/types";
+import type { DashboardMetrics, DashboardProduction, DashboardStatus, ProductionKind, ProductionPeriod, Profile, SalesforceOrderRecord, SentenceEvent, SentenceRecord, SentenceStatus } from "@/lib/types";
 import { isOverdue, statusLabels } from "@/lib/normalization";
+import { canViewAllOperationalData } from "@/lib/permissions";
 
 const dashboardStatusLabels = statusLabels.filter((status): status is Exclude<SentenceStatus, "ENTREGUE"> => status !== "ENTREGUE");
 
@@ -37,6 +38,7 @@ export const sampleSentences: SentenceRecord[] = [
     tipo_servico_raw: "REFATURAMENTO, COBRANÇAS ESPECIAIS",
     responsavel_cumprimento: "LUCAS",
     responsavel_qualidade: "ANTHONY",
+    pendencia: "ÁREA",
     cumprimento_status: "ENTREGUE",
     qualidade_status: "PENDENTE",
     cumprimento_data: "2026-04-09",
@@ -68,6 +70,7 @@ export const sampleSentences: SentenceRecord[] = [
     tipo_servico_raw: "CANCELAMENTO DE TOI",
     responsavel_cumprimento: "WELLINGTON",
     responsavel_qualidade: "ARYANNE",
+    pendencia: "QUESTIONAMENTO AO ESCRITÓRIO",
     cumprimento_status: "PENDENTE",
     qualidade_status: "ESTOQUE",
     cumprimento_data: null,
@@ -99,6 +102,7 @@ export const sampleSentences: SentenceRecord[] = [
     tipo_servico_raw: "VISTORIA, REFATURAMENTO",
     responsavel_cumprimento: "CAROL",
     responsavel_qualidade: "CAROL",
+    pendencia: null,
     cumprimento_status: "EM ANDAMENTO",
     qualidade_status: "EM ANDAMENTO",
     cumprimento_data: null,
@@ -118,7 +122,9 @@ export const sampleEvents: SentenceEvent[] = [
     pendencia: null,
     area: null,
     obs: "Cumprimento entregue.",
+    created_by: sampleProfile.id,
     created_at: "2026-04-09T12:00:00Z",
+    canEdit: true,
   },
   {
     id: "event-2",
@@ -129,8 +135,10 @@ export const sampleEvents: SentenceEvent[] = [
     responsavel: "ANTHONY",
     pendencia: "ÁREA",
     area: "REFATURAMENTO",
-    obs: "Aguardando evidência complementar.",
+    obs: "Aguardando evidÃªncia complementar.",
+    created_by: sampleProfile.id,
     created_at: "2026-04-11T12:00:00Z",
+    canEdit: true,
   },
 ];
 
@@ -246,68 +254,100 @@ export function buildSampleDashboard(profile: Profile = sampleProfile): Dashboar
 }
 
 type SampleProductionPerson = {
+  key: string;
   name: string;
-  cumprimento: number;
-  qualidade: number;
-  today: Record<ProductionKind, number>;
+  counts: SampleProductionCountsByKind;
+  occurrenceDays: Record<ProductionKind, number>;
   isCurrentUser: boolean;
 };
+
+type ProductionMeasure = "total" | "delivered" | "pending";
+type SampleProductionMetricCounts = Record<ProductionMeasure, number>;
+type SampleProductionPeriodCounts = Record<ProductionPeriod, SampleProductionMetricCounts>;
+type SampleProductionCountsByKind = Record<ProductionKind, SampleProductionPeriodCounts>;
+type ProductionDaySets = Record<ProductionKind, Set<string>>;
 
 function buildSampleProduction(currentUserName: string, showFullOperation: boolean): DashboardProduction {
   const todayKey = new Date().toISOString().slice(0, 10);
   const currentUserKey = normalizeResponsibleKey(currentUserName);
   const people = new Map<string, SampleProductionPerson>();
-  const operationToday: Record<ProductionKind, number> = { cumprimento: 0, qualidade: 0 };
-  const operationMonth: Record<ProductionKind, number> = { cumprimento: 0, qualidade: 0 };
+  const operationCounts = emptySampleProductionCountsByKind();
+  const operationOccurrenceDaySets = emptyProductionDaySets();
+  const personOccurrenceDaySets = new Map<string, ProductionDaySets>();
 
   people.set(currentUserKey, {
+    key: currentUserKey,
     name: currentUserName,
-    cumprimento: 0,
-    qualidade: 0,
-    today: { cumprimento: 0, qualidade: 0 },
+    counts: emptySampleProductionCountsByKind(),
+    occurrenceDays: { cumprimento: 0, qualidade: 0 },
     isCurrentUser: true,
   });
+  personOccurrenceDaySets.set(currentUserKey, emptyProductionDaySets());
 
   for (const event of sampleEvents) {
-    if (event.tipo_evento !== "ENTREGUE") continue;
     const responsible = event.responsavel?.trim();
     const responsibleKey = normalizeResponsibleKey(responsible);
     if (!responsible || !responsibleKey) continue;
 
     const row = people.get(responsibleKey) ?? {
+      key: responsibleKey,
       name: responsible,
-      cumprimento: 0,
-      qualidade: 0,
-      today: { cumprimento: 0, qualidade: 0 },
+      counts: emptySampleProductionCountsByKind(),
+      occurrenceDays: { cumprimento: 0, qualidade: 0 },
       isCurrentUser: responsibleKey === currentUserKey,
     };
     const kind: ProductionKind = event.etapa === "CUMPRIMENTO" ? "cumprimento" : "qualidade";
+    const measure: ProductionMeasure = event.tipo_evento === "ENTREGUE" ? "delivered" : "pending";
+    const occurrenceDaySets = personOccurrenceDaySets.get(responsibleKey) ?? emptyProductionDaySets();
 
-    row[kind] += 1;
-    operationMonth[kind] += 1;
-    if (event.data_evento === todayKey) operationToday[kind] += 1;
+    addSampleProductionCount(row.counts, kind, "month", "total", 1);
+    addSampleProductionCount(row.counts, kind, "month", measure, 1);
+    addSampleProductionCount(operationCounts, kind, "month", "total", 1);
+    addSampleProductionCount(operationCounts, kind, "month", measure, 1);
+    operationOccurrenceDaySets[kind].add(event.data_evento);
+    occurrenceDaySets[kind].add(event.data_evento);
+    if (event.data_evento === todayKey) {
+      addSampleProductionCount(row.counts, kind, "day", "total", 1);
+      addSampleProductionCount(row.counts, kind, "day", measure, 1);
+      addSampleProductionCount(operationCounts, kind, "day", "total", 1);
+      addSampleProductionCount(operationCounts, kind, "day", measure, 1);
+    }
 
     if (responsibleKey === currentUserKey && event.data_evento === todayKey) {
-      row.today[kind] += 1;
       row.name = currentUserName;
       row.isCurrentUser = true;
     }
     people.set(responsibleKey, row);
+    personOccurrenceDaySets.set(responsibleKey, occurrenceDaySets);
   }
 
   const currentUser = people.get(currentUserKey)!;
+  currentUser.occurrenceDays = countProductionDaySets(personOccurrenceDaySets.get(currentUserKey) ?? emptyProductionDaySets());
 
   return {
-    today: showFullOperation ? { ...operationToday } : { ...currentUser.today },
+    today: showFullOperation
+      ? sampleProductionTotalCountsForPeriod(operationCounts, "day")
+      : sampleProductionTotalCountsForPeriod(currentUser.counts, "day"),
     month: showFullOperation
-      ? { ...operationMonth }
-      : {
-          cumprimento: currentUser.cumprimento,
-          qualidade: currentUser.qualidade,
-        },
-    ranking: {
-      cumprimento: buildSampleRankingRows([...people.values()], "cumprimento", showFullOperation),
-      qualidade: buildSampleRankingRows([...people.values()], "qualidade", showFullOperation),
+      ? sampleProductionTotalCountsForPeriod(operationCounts, "month")
+      : sampleProductionTotalCountsForPeriod(currentUser.counts, "month"),
+    occurrenceDays: showFullOperation ? countProductionDaySets(operationOccurrenceDaySets) : { ...currentUser.occurrenceDays },
+    ranking: buildSampleRanking([...people.values()], showFullOperation),
+  };
+}
+
+function buildSampleRanking(
+  people: SampleProductionPerson[],
+  showFullOperation: boolean,
+): DashboardProduction["ranking"] {
+  return {
+    cumprimento: {
+      month: buildSampleRankingRows(people, "cumprimento", "month", showFullOperation),
+      day: buildSampleRankingRows(people, "cumprimento", "day", showFullOperation),
+    },
+    qualidade: {
+      month: buildSampleRankingRows(people, "qualidade", "month", showFullOperation),
+      day: buildSampleRankingRows(people, "qualidade", "day", showFullOperation),
     },
   };
 }
@@ -315,19 +355,73 @@ function buildSampleProduction(currentUserName: string, showFullOperation: boole
 function buildSampleRankingRows(
   people: SampleProductionPerson[],
   kind: ProductionKind,
+  period: ProductionPeriod,
   showFullOperation: boolean,
-): DashboardProduction["ranking"][ProductionKind] {
+): DashboardProduction["ranking"][ProductionKind][ProductionPeriod] {
   const ranked = people
-    .filter((person) => person[kind] > 0)
-    .sort((a, b) => b[kind] - a[kind] || a.name.localeCompare(b.name))
-    .map((person, index) => ({
+    .map((person) => {
+      const counts = person.counts[kind][period];
+      return { person, counts, value: counts.total };
+    })
+    .filter((row) => row.value > 0)
+    .sort((a, b) => b.value - a.value || a.person.name.localeCompare(b.person.name) || a.person.key.localeCompare(b.person.key))
+    .map(({ person, counts, value }, index) => ({
       name: showFullOperation || person.isCurrentUser ? person.name : `Operador ${index + 1}`,
       position: index + 1,
-      value: person[kind],
+      value,
+      total: counts.total,
+      delivered: counts.delivered,
+      pending: counts.pending,
       isCurrentUser: person.isCurrentUser,
     }));
 
   return showFullOperation ? ranked : ranked.slice(0, 8);
+}
+
+function emptySampleProductionMetricCounts(): SampleProductionMetricCounts {
+  return { total: 0, delivered: 0, pending: 0 };
+}
+
+function emptySampleProductionPeriodCounts(): SampleProductionPeriodCounts {
+  return {
+    month: emptySampleProductionMetricCounts(),
+    day: emptySampleProductionMetricCounts(),
+  };
+}
+
+function emptySampleProductionCountsByKind(): SampleProductionCountsByKind {
+  return {
+    cumprimento: emptySampleProductionPeriodCounts(),
+    qualidade: emptySampleProductionPeriodCounts(),
+  };
+}
+
+function addSampleProductionCount(
+  counts: SampleProductionCountsByKind,
+  kind: ProductionKind,
+  period: ProductionPeriod,
+  measure: ProductionMeasure,
+  value: number,
+) {
+  counts[kind][period][measure] += value;
+}
+
+function sampleProductionTotalCountsForPeriod(
+  counts: SampleProductionCountsByKind,
+  period: ProductionPeriod,
+): Record<ProductionKind, number> {
+  return {
+    cumprimento: counts.cumprimento[period].total,
+    qualidade: counts.qualidade[period].total,
+  };
+}
+
+function emptyProductionDaySets(): ProductionDaySets {
+  return { cumprimento: new Set(), qualidade: new Set() };
+}
+
+function countProductionDaySets(daySets: ProductionDaySets): Record<ProductionKind, number> {
+  return { cumprimento: daySets.cumprimento.size, qualidade: daySets.qualidade.size };
 }
 
 function normalizeResponsibleKey(value: string | null | undefined) {
@@ -335,5 +429,5 @@ function normalizeResponsibleKey(value: string | null | undefined) {
 }
 
 function canSeeFullProduction(profile: Pick<Profile, "active" | "role">) {
-  return profile.active && (profile.role === "admin" || profile.role === "gestor");
+  return canViewAllOperationalData(profile);
 }
